@@ -1,27 +1,21 @@
-import { updateOrderStatus } from '../../../lib/orders';
+import { Redis } from '@upstash/redis';
 
-export default function handler(req, res) {
-  if (req.method !== 'PATCH') {
-    return res.status(405).json({ error: 'Method not allowed' });
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
+export default async function handler(req,res){
+  const {id}=req.query;
+  const token=req.headers['x-admin-token'];
+  if(token!==process.env.ADMIN_TOKEN){
+    return res.status(401).json({error:'Unauthorized'});
   }
 
-  const token = req.headers['x-admin-token'];
-  if (token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if(req.method==='PATCH'){
+    const existing=await redis.get(id);
+    const updated={...existing,...req.body};
+    await redis.set(id,updated);
+    return res.json({order:updated});
   }
-
-  const { id } = req.query;
-  const { status } = req.body;
-
-  const validStatuses = ['pending', 'confirmed', 'baking', 'ready', 'delivered', 'cancelled'];
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
-
-  const order = updateOrderStatus(id, status);
-  if (!order) {
-    return res.status(404).json({ error: 'Order not found' });
-  }
-
-  return res.status(200).json({ order });
 }
