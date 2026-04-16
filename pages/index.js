@@ -1,10 +1,9 @@
 // pages/index.js — Blissful Bakes Customer Storefront
-// Updated: delivery fee, deposit, dietary needs, receipt with logo, lightbox
+// Updated: delivery fee, deposit, dietary needs, lightbox
+// Note: Receipt/invoice generation is admin-only (pages/admin.js)
 import { useState } from 'react';
 import { menuItems, contact } from '../lib/menu';
 import Head from 'next/head';
-
-const LOGO_PATH = '/images/logo.png';
 
 export default function Home() {
   const [step, setStep] = useState('menu');
@@ -81,124 +80,6 @@ export default function Home() {
     ? `Hello Blissful Bakes! 🎂 I just placed Order ${placedOrder.id}.\n\nName: ${placedOrder.customer.name}\nPhone: ${placedOrder.customer.phone}\nAddress: ${placedOrder.customer.address}\n\nItems:\n${placedOrder.items.map(i => `• ${i.qty}× ${i.name} (${i.size}) — Ksh ${i.subtotal.toLocaleString()}`).join('\n')}\n\nSubtotal: Ksh ${cartTotal.toLocaleString()}\nDelivery: Ksh ${placedOrder.deliveryFee || 0}\nDeposit Paid: Ksh ${placedOrder.depositAmount || 0}\nTotal: Ksh ${placedOrder.total.toLocaleString()}${placedOrder.customer.dietaryNeeds ? `\n\nDietary Needs: ${placedOrder.customer.dietaryNeeds}` : ''}${placedOrder.customer.notes ? `\nNotes: ${placedOrder.customer.notes}` : ''}\n\nPlease confirm. Thank you!`
     : '';
 
-  const handlePrintReceipt = () => {
-    if (!placedOrder) return;
-    const subtotal = placedOrder.items.reduce((s, i) => s + i.subtotal, 0);
-    const deposit = placedOrder.depositAmount || 0;
-    const balanceDue = placedOrder.total - deposit;
-
-    const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Receipt — ${placedOrder.id}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;600&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; background: #fff; color: #1a1a1a; }
-    .page { max-width: 680px; margin: 0 auto; padding: 48px; }
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #3d2314; padding-bottom: 28px; margin-bottom: 32px; }
-    .logo-block img { height: 100px; }
-    .invoice-meta { text-align: right; }
-    .invoice-title { font-family: 'Playfair Display', serif; font-size: 36px; color: #3d2314; }
-    .order-id { font-size: 15px; color: #c9973a; font-weight: 700; margin-top: 6px; }
-    .date { font-size: 13px; color: #777; margin-top: 4px; }
-    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
-    .party-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #999; font-weight: 700; margin-bottom: 8px; }
-    .party-name { font-size: 17px; font-weight: 700; color: #3d2314; margin-bottom: 4px; }
-    .party-info { font-size: 13px; color: #555; line-height: 1.7; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    thead tr { background: #3d2314; color: white; }
-    thead th { padding: 11px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: left; }
-    thead th:last-child { text-align: right; }
-    tbody tr { border-bottom: 1px solid #f0e8d8; }
-    tbody tr:nth-child(even) { background: #fdf8f0; }
-    tbody td { padding: 11px 14px; font-size: 13px; color: #333; }
-    tbody td:last-child { text-align: right; font-weight: 600; }
-    .totals { margin-left: auto; width: 280px; margin-bottom: 32px; }
-    .totals-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; border-bottom: 1px solid #f0e8d8; color: #555; }
-    .totals-row.grand { background: #3d2314; color: white; padding: 12px 14px; border-radius: 6px; font-size: 16px; font-weight: 700; border-bottom: none; margin-top: 4px; }
-    .totals-row.balance { color: #c9973a; font-weight: 700; font-size: 14px; border-bottom: none; margin-top: 4px; }
-    .notes-section { background: #fdf8f0; border-left: 4px solid #c9973a; padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 32px; font-size: 13px; color: #555; line-height: 1.7; }
-    .notes-section strong { color: #3d2314; display: block; margin-bottom: 4px; }
-    .footer { text-align: center; padding-top: 28px; border-top: 2px solid #f0e8d8; color: #999; font-size: 12px; line-height: 1.8; }
-    .footer .brand { font-family: 'Playfair Display', serif; font-size: 16px; color: #3d2314; font-style: italic; margin-bottom: 4px; }
-    .footer .contact { color: #c9973a; font-weight: 600; font-size: 13px; }
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .page { padding: 24px; } }
-  </style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div class="logo-block">
-      <img src="${window.location.origin}${LOGO_PATH}" alt="Blissful Bakes" onerror="this.style.display='none'" />
-    </div>
-    <div class="invoice-meta">
-      <div class="invoice-title">RECEIPT</div>
-      <div class="order-id"># ${placedOrder.id}</div>
-      <div class="date">${new Date(placedOrder.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-    </div>
-  </div>
-  <div class="parties">
-    <div>
-      <div class="party-label">From</div>
-      <div class="party-name">Blissful Bakes</div>
-      <div class="party-info">Nairobi, Kenya<br>${contact.phone}</div>
-    </div>
-    <div>
-      <div class="party-label">Bill To</div>
-      <div class="party-name">${placedOrder.customer.name}</div>
-      <div class="party-info">${placedOrder.customer.phone}<br>${placedOrder.customer.address}</div>
-    </div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th style="text-align:center">Size</th>
-        <th style="text-align:center">Qty</th>
-        <th style="text-align:right">Unit</th>
-        <th>Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${placedOrder.items.map(item => `
-        <tr>
-          <td><strong>${item.name}</strong></td>
-          <td style="text-align:center;color:#777">${item.size}</td>
-          <td style="text-align:center">${item.qty}</td>
-          <td style="text-align:right">Ksh ${item.price.toLocaleString()}</td>
-          <td>Ksh ${item.subtotal.toLocaleString()}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  <div class="totals">
-    <div class="totals-row"><span>Subtotal</span><span>Ksh ${subtotal.toLocaleString()}</span></div>
-    ${placedOrder.deliveryFee > 0 ? `<div class="totals-row"><span>Delivery Fee</span><span>Ksh ${placedOrder.deliveryFee.toLocaleString()}</span></div>` : ''}
-    <div class="totals-row grand"><span>TOTAL</span><span>Ksh ${placedOrder.total.toLocaleString()}</span></div>
-    ${deposit > 0 ? `
-    <div class="totals-row" style="color:#059669;margin-top:8px"><span>Deposit Paid</span><span>– Ksh ${deposit.toLocaleString()}</span></div>
-    <div class="totals-row balance"><span>Balance Due</span><span>Ksh ${balanceDue.toLocaleString()}</span></div>` : ''}
-  </div>
-  ${(placedOrder.customer.dietaryNeeds || placedOrder.customer.notes) ? `
-  <div class="notes-section">
-    ${placedOrder.customer.dietaryNeeds ? `<strong>Dietary Needs / Allergies</strong>${placedOrder.customer.dietaryNeeds}<br><br>` : ''}
-    ${placedOrder.customer.notes ? `<strong>Special Instructions</strong>${placedOrder.customer.notes}` : ''}
-  </div>` : ''}
-  <div class="footer">
-    <div class="brand">Blissful Bakes</div>
-    <div class="contact">${contact.phone}</div>
-    <p style="margin-top:8px">Thank you for your order! Made with love in Kenya 🎂</p>
-  </div>
-</div>
-<script>window.onload = () => window.print();<\/script>
-</body>
-</html>`);
-    win.document.close();
-  };
-
   const isFormValid = customerInfo.name && customerInfo.phone && customerInfo.address;
 
   const inputStyle = {
@@ -238,7 +119,7 @@ export default function Home() {
         {/* Header */}
         <header style={{ background: 'var(--brown)', padding: '0 24px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
-            <img src={LOGO_PATH} alt="Blissful Bakes" style={{ height: 52 }} onError={e => { e.target.style.display = 'none'; }} />
+            <img src="/images/logo.png" alt="Blissful Bakes" style={{ height: 52 }} onError={e => { e.target.style.display = 'none'; }} />
             {step === 'menu' && (
               <button
                 onClick={() => cart.length && setStep('cart')}
@@ -516,52 +397,55 @@ export default function Home() {
 
           {/* ── CONFIRMATION ── */}
           {step === 'confirm' && placedOrder && (
-            <div style={{ animation: 'fadeIn 0.5s ease', maxWidth: 560, margin: '0 auto', textAlign: 'center', paddingTop: 60 }}>
+            <div style={{ animation: 'fadeIn 0.5s ease', maxWidth: 520, margin: '0 auto', textAlign: 'center', paddingTop: 60 }}>
               <div style={{ fontSize: 72, marginBottom: 16 }}>🎉</div>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: 'var(--brown)', marginBottom: 8 }}>Order Placed!</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 20 }}>We'll confirm your order soon via WhatsApp.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 20 }}>
+                We'll confirm your order shortly via WhatsApp.
+              </p>
+
               <div style={{ display: 'inline-block', background: 'var(--gold)', color: 'var(--brown)', borderRadius: 30, padding: '8px 24px', fontWeight: 800, fontSize: 16, marginBottom: 32 }}>
                 Order ID: {placedOrder.id}
               </div>
 
-              {/* Invoice summary card */}
-              <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--border)', padding: '24px', textAlign: 'left', marginBottom: 28, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <img src={LOGO_PATH} alt="Blissful Bakes" style={{ height: 80 }} onError={e => e.target.style.display = 'none'} />
+              {/* Simple order summary — no print controls, those live in admin */}
+              <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--border)', padding: '24px', textAlign: 'left', marginBottom: 28, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--brown)', marginBottom: 14, fontSize: 15, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+                  Order Summary
                 </div>
-                <div style={{ fontWeight: 700, color: 'var(--brown)', marginBottom: 12, fontFamily: "'Playfair Display', serif", fontSize: 18, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
-                  Receipt — {placedOrder.id}
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
-                  {new Date(placedOrder.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </div>
+
                 {placedOrder.items.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 6 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text)', marginBottom: 6 }}>
                     <span>{item.qty}× {item.name} ({item.size})</span>
                     <span>Ksh {item.subtotal.toLocaleString()}</span>
                   </div>
                 ))}
-                <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12 }}>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {placedOrder.deliveryFee > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-muted)' }}>
                       <span>Delivery</span><span>Ksh {placedOrder.deliveryFee.toLocaleString()}</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16, color: 'var(--brown)' }}>
                     <span>Total</span>
-                    <span style={{ color: 'var(--gold)', fontFamily: "'Playfair Display', serif" }}>Ksh {placedOrder.total.toLocaleString()}</span>
+                    <span style={{ color: 'var(--gold)', fontFamily: "'Playfair Display', serif" }}>
+                      Ksh {placedOrder.total.toLocaleString()}
+                    </span>
                   </div>
                   {placedOrder.depositAmount > 0 && (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#059669', marginTop: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#059669' }}>
                         <span>Deposit Paid</span><span>Ksh {placedOrder.depositAmount.toLocaleString()}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#c9973a', fontWeight: 700 }}>
-                        <span>Balance Due</span><span>Ksh {(placedOrder.total - placedOrder.depositAmount).toLocaleString()}</span>
+                        <span>Balance Due</span>
+                        <span>Ksh {(placedOrder.total - placedOrder.depositAmount).toLocaleString()}</span>
                       </div>
                     </>
                   )}
                 </div>
+
                 {(placedOrder.customer.dietaryNeeds || placedOrder.customer.notes) && (
                   <div style={{ marginTop: 14, padding: '10px 14px', background: '#fdf8f0', borderRadius: 8, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
                     {placedOrder.customer.dietaryNeeds && <div>🥗 <strong>Dietary:</strong> {placedOrder.customer.dietaryNeeds}</div>}
@@ -570,18 +454,16 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+              {/* Customer actions — WhatsApp & Call only */}
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
                 <a
                   href={`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(whatsappMsg)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ background: '#25D366', color: 'white', borderRadius: 12, padding: '13px 24px', fontWeight: 700, fontSize: 15, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
                   💬 WhatsApp Us
                 </a>
-                <button onClick={handlePrintReceipt} style={{ background: 'var(--brown)', color: 'white', border: 'none', borderRadius: 12, padding: '13px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  🖨️ Print Receipt
-                </button>
-                <a href={`tel:${contact.phone}`} style={{ background: 'white', color: 'var(--brown)', border: '1.5px solid var(--border)', borderRadius: 12, padding: '13px 24px', fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>
+                <a href={`tel:${contact.phone}`}
+                  style={{ background: 'white', color: 'var(--brown)', border: '1.5px solid var(--border)', borderRadius: 12, padding: '13px 24px', fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>
                   📞 Call Us
                 </a>
               </div>
